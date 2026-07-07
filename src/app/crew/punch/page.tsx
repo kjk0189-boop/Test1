@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import QrScanner from "@/components/QrScanner";
 
 type AttendanceRecord = {
   id: string;
@@ -35,6 +36,7 @@ export default function CrewPunchPage() {
   const [now, setNow] = useState(new Date());
   const [loading, setLoading] = useState(false);
   const [flash, setFlash] = useState<{ type: string; text: string } | null>(null);
+  const [scannerOpen, setScannerOpen] = useState(false);
 
   const load = useCallback(async () => {
     const [storeRes, attRes] = await Promise.all([
@@ -54,15 +56,15 @@ export default function CrewPunchPage() {
   const status = !record ? "before" : !record.checkOut ? "working" : "done";
   const statusLabel = status === "before" ? "출근 전" : status === "working" ? "근무 중" : "퇴근 완료";
 
-  async function handlePunch() {
-    if (!store) return;
+  async function submitPunch(qrToken: string) {
+    setScannerOpen(false);
     setLoading(true);
     setFlash(null);
     try {
       const res = await fetch("/api/attendance/punch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ qrToken: store.qrToken }),
+        body: JSON.stringify({ qrToken }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -86,7 +88,7 @@ export default function CrewPunchPage() {
   return (
     <div className="max-w-3xl">
       <h2 className="text-2xl font-bold mb-1" style={{ color: "#1B2420", fontFamily: "var(--font-display)" }}>출/퇴근</h2>
-      <p className="text-sm mb-6" style={{ color: "#5B6660" }}>{store.name} 매장 QR을 스캔해서 출근·퇴근을 기록하세요.</p>
+      <p className="text-sm mb-6" style={{ color: "#5B6660" }}>{store.name} 매장 QR을 카메라로 스캔해서 출근·퇴근을 기록하세요.</p>
 
       <div className="grid grid-cols-1 md:grid-cols-5 gap-5">
         <div className="md:col-span-3 rounded-2xl p-7" style={{ background: "#1B2420" }}>
@@ -100,12 +102,12 @@ export default function CrewPunchPage() {
             </div>
           </div>
           <button
-            onClick={handlePunch}
+            onClick={() => setScannerOpen(true)}
             disabled={loading || status === "done"}
             className="w-full py-4 rounded-xl font-bold text-base disabled:opacity-50"
             style={{ background: status === "before" ? "#B8863B" : status === "working" ? "#A64B3A" : "#3B443E", color: "#1B2420" }}
           >
-            {loading ? "처리 중..." : status === "before" ? "QR 스캔하고 출근하기" : status === "working" ? "QR 스캔하고 퇴근하기" : "오늘 근무 완료"}
+            {loading ? "처리 중..." : status === "before" ? "카메라로 QR 스캔하고 출근하기" : status === "working" ? "카메라로 QR 스캔하고 퇴근하기" : "오늘 근무 완료"}
           </button>
           {flash && (
             <div className="mt-4 text-sm text-center py-2 rounded-lg font-medium" style={{ background: flash.type === "error" ? "#3A2622" : "#233028", color: flash.type === "error" ? "#E39A87" : "#9FCDAE" }}>
@@ -133,6 +135,10 @@ export default function CrewPunchPage() {
           </div>
         </div>
       </div>
+
+      {scannerOpen && (
+        <QrScanner onClose={() => setScannerOpen(false)} onDecode={(text) => submitPunch(text)} />
+      )}
     </div>
   );
 }

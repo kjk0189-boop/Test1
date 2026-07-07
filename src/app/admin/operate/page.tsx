@@ -5,14 +5,16 @@ import StoreDashboard from "@/components/store-views/StoreDashboard";
 import StoreAttendance from "@/components/store-views/StoreAttendance";
 import StoreCrew from "@/components/store-views/StoreCrew";
 import StorePayroll from "@/components/store-views/StorePayroll";
+import StoreQr from "@/components/store-views/StoreQr";
 
-type Store = { id: string; name: string; weeklyHolidayDow: number };
+type Store = { id: string; name: string; address: string | null; qrToken: string; weeklyHolidayDow: number };
 
 const TABS = [
   { key: "dashboard", label: "출근 현황" },
   { key: "attendance", label: "근태 관리" },
   { key: "crew", label: "크루원 관리" },
   { key: "payroll", label: "급여 관리" },
+  { key: "qr", label: "매장 QR" },
 ] as const;
 
 export default function AdminOperatePage() {
@@ -65,6 +67,7 @@ export default function AdminOperatePage() {
       {tab === "attendance" && <StoreAttendance storeId={store.id} />}
       {tab === "crew" && <StoreCrew storeId={store.id} />}
       {tab === "payroll" && <StorePayroll storeId={store.id} holidayDow={store.weeklyHolidayDow ?? 0} />}
+      {tab === "qr" && <StoreQr storeName={store.name} address={store.address} qrToken={store.qrToken} />}
     </div>
   );
 }

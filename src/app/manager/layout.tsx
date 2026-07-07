@@ -14,6 +14,7 @@ export default async function ManagerLayout({ children }: { children: React.Reac
         { key: "attendance", label: "근태 관리", href: "/manager/attendance" },
         { key: "crew", label: "크루원 관리", href: "/manager/crew" },
         { key: "payroll", label: "급여 관리", href: "/manager/payroll" },
+        { key: "qr", label: "매장 QR", href: "/manager/qr" },
       ]}
     >
       {children}

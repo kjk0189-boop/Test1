@@ -26,9 +26,11 @@ export default function StoreDashboard({ storeId, storeName }: { storeId: string
 
   useEffect(() => {
     async function load() {
-      const usersRes = await fetch("/api/users").then((r) => r.json());
+      const [usersRes, attRes] = await Promise.all([
+        fetch("/api/users").then((r) => r.json()),
+        fetch(`/api/attendance?storeId=${storeId}&date=${todayStr()}`).then((r) => r.json()),
+      ]);
       setCrewList((usersRes.users ?? []).filter((u: UserRow) => u.role === "crew" && u.storeId === storeId));
-      const attRes = await fetch(`/api/attendance?storeId=${storeId}&date=${todayStr()}`).then((r) => r.json());
       setRecords(attRes.attendance ?? []);
     }
     load();

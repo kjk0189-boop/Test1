@@ -1,19 +1,8 @@
-"use client";
-
-import { useEffect, useState } from "react";
+import { requireUser } from "@/lib/authz";
 import StoreDashboard from "@/components/store-views/StoreDashboard";
 
-export default function ManagerDashboardPage() {
-  const [storeId, setStoreId] = useState<string | null>(null);
-  const [storeName, setStoreName] = useState("");
-
-  useEffect(() => {
-    fetch("/api/my-store").then((r) => r.json()).then((d) => {
-      setStoreId(d.store?.id ?? null);
-      setStoreName(d.store?.name ?? "");
-    });
-  }, []);
-
-  if (!storeId) return <p className="text-sm" style={{ color: "#8A9088" }}>불러오는 중...</p>;
-  return <StoreDashboard storeId={storeId} storeName={storeName} />;
+export default async function ManagerDashboardPage() {
+  const { store } = await requireUser("manager");
+  if (!store) return <p className="text-sm" style={{ color: "#8A9088" }}>소속 지점 정보를 찾을 수 없어요. 관리자에게 문의해주세요.</p>;
+  return <StoreDashboard storeId={store.id} storeName={store.name} />;
 }

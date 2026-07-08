@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { users } from "@/lib/schema";
 import { getSessionFromCookies, normalizePhone, hashPassword } from "@/lib/auth";
-import { uid } from "@/lib/utils";
+import { uid, shouldAutoPromote } from "@/lib/utils";
 
 function sanitize(u: typeof users.$inferSelect) {
   const { passwordHash, ...rest } = u;
@@ -15,6 +15,16 @@ export async function GET(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "로그인이 필요해요." }, { status: 401 });
 
   const rows = await db.select().from(users);
+
+  // 신입 크루 중 입사 90일 경과자는 이 시점에 "일반"으로 자동 승급 처리
+  const toPromote = rows.filter((u) => shouldAutoPromote(u));
+  if (toPromote.length > 0) {
+    await Promise.all(
+      toPromote.map((u) => db.update(users).set({ position: "일반" }).where(eq(users.id, u.id)))
+    );
+    toPromote.forEach((u) => { u.position = "일반"; });
+  }
+
   return NextResponse.json({ users: rows.map(sanitize) });
 }
 
@@ -61,6 +71,7 @@ export async function POST(req: NextRequest) {
     mustChangePassword: true,
     hourlyWage: role === "crew" ? Number(body?.hourlyWage ?? 10030) : null,
     hireDate: role === "crew" ? (body?.hireDate ?? null) : null,
+    position: role === "crew" ? "신입" : null,
     active: true,
   };
 

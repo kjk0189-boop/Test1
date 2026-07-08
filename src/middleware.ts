@@ -13,7 +13,12 @@ export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // 정적 파일, API, 공개 경로는 미들웨어에서 리다이렉트하지 않음 (API는 각 라우트에서 자체 인증)
-  if (pathname.startsWith("/api") || pathname.startsWith("/_next") || PUBLIC_PATHS.includes(pathname)) {
+  if (
+    pathname.startsWith("/api") ||
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/contract-sign") ||
+    PUBLIC_PATHS.includes(pathname)
+  ) {
     return NextResponse.next();
   }
 

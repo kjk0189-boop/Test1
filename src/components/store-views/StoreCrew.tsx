@@ -5,6 +5,13 @@ import { useEffect, useState, useCallback } from "react";
 type UserRow = {
   id: string; name: string; role: string; storeId: string | null;
   phone: string; hourlyWage: number | null; hireDate: string | null; active: boolean;
+  position: string | null;
+};
+
+const POSITION_COLOR: Record<string, string> = {
+  "신입": "#B8863B",
+  "일반": "#5B6660",
+  "선임": "#3F6B4F",
 };
 
 export default function StoreCrew({ storeId }: { storeId: string }) {
@@ -51,6 +58,9 @@ export default function StoreCrew({ storeId }: { storeId: string }) {
             <div className="min-w-0">
               <div className="font-semibold flex items-center gap-2" style={{ color: "#1B2420" }}>
                 {u.name}
+                {u.position && (
+                  <span className="px-1.5 py-0.5 rounded-full" style={{ background: "#EEF0EA", color: POSITION_COLOR[u.position] ?? "#5B6660", fontSize: "10px" }}>{u.position}</span>
+                )}
                 {!u.active && <span className="px-1.5 py-0.5 rounded-full" style={{ background: "#F5E7E3", color: "#A64B3A", fontSize: "10px" }}>퇴사</span>}
               </div>
               <div className="text-xs truncate" style={{ color: "#8A9088" }}>{u.phone} · 시급 {u.hourlyWage?.toLocaleString()}원 · 입사 {u.hireDate}</div>
@@ -116,6 +126,7 @@ function CrewFormModal({
   const [phone, setPhone] = useState(initial?.phone ?? "");
   const [hourlyWage, setHourlyWage] = useState(initial?.hourlyWage ?? 10030);
   const [hireDate, setHireDate] = useState(initial?.hireDate ?? "");
+  const [position, setPosition] = useState(initial?.position ?? "신입");
   const [active, setActive] = useState(initial?.active ?? true);
   const [err, setErr] = useState("");
   const [saving, setSaving] = useState(false);
@@ -129,7 +140,7 @@ function CrewFormModal({
         const res = await fetch(`/api/users/${initial.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, phone, hourlyWage: Number(hourlyWage), hireDate, active }),
+          body: JSON.stringify({ name, phone, hourlyWage: Number(hourlyWage), hireDate, position, active }),
         });
         const data = await res.json();
         if (!res.ok) { setErr(data.error || "저장에 실패했어요."); return; }
@@ -179,6 +190,17 @@ function CrewFormModal({
               <input type="date" value={hireDate ?? ""} onChange={(e) => setHireDate(e.target.value)} className="w-full mt-1 px-3 py-2 rounded-lg border text-sm" style={{ borderColor: "#DDE1D8", fontFamily: "var(--font-mono)" }} />
             </div>
           </div>
+          {initial && (
+            <div>
+              <label className="text-xs font-semibold" style={{ color: "#5B6660" }}>직책</label>
+              <select value={position} onChange={(e) => setPosition(e.target.value)} className="w-full mt-1 px-3 py-2 rounded-lg border text-sm" style={{ borderColor: "#DDE1D8" }}>
+                <option value="신입">신입 크루</option>
+                <option value="일반">일반 크루</option>
+                <option value="선임">선임 크루</option>
+              </select>
+              <p className="text-xs mt-1" style={{ color: "#8A9088" }}>신입 크루는 입사 후 90일이 지나면 자동으로 일반 크루로 바뀌어요.</p>
+            </div>
+          )}
           {initial && (
             <label className="flex items-center gap-2 text-sm" style={{ color: "#3B443E" }}>
               <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} /> 재직 중

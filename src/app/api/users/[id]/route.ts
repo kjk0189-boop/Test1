@@ -33,6 +33,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   }
   if (typeof body?.hourlyWage === "number") patch.hourlyWage = body.hourlyWage;
   if (typeof body?.hireDate === "string") patch.hireDate = body.hireDate;
+  if (typeof body?.position === "string") patch.position = body.position;
   if (typeof body?.active === "boolean") patch.active = body.active;
   if (typeof body?.storeId === "string" && session.role === "admin") patch.storeId = body.storeId;
 

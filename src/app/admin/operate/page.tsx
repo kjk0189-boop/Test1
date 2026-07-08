@@ -6,13 +6,15 @@ import StoreAttendance from "@/components/store-views/StoreAttendance";
 import StoreCrew from "@/components/store-views/StoreCrew";
 import StorePayroll from "@/components/store-views/StorePayroll";
 import StoreQr from "@/components/store-views/StoreQr";
+import StoreContracts from "@/components/contracts/StoreContracts";
 
-type Store = { id: string; name: string; address: string | null; qrToken: string; weeklyHolidayDow: number };
+type Store = { id: string; name: string; address: string | null; qrToken: string; weeklyHolidayDow: number; sealImage: string | null };
 
 const TABS = [
   { key: "dashboard", label: "출근 현황" },
   { key: "attendance", label: "근태 관리" },
   { key: "crew", label: "크루원 관리" },
+  { key: "contracts", label: "근로계약서" },
   { key: "payroll", label: "급여 관리" },
   { key: "qr", label: "매장 QR" },
 ] as const;
@@ -66,7 +68,8 @@ export default function AdminOperatePage() {
       {tab === "dashboard" && <StoreDashboard storeId={store.id} storeName={store.name} />}
       {tab === "attendance" && <StoreAttendance storeId={store.id} />}
       {tab === "crew" && <StoreCrew storeId={store.id} />}
-      {tab === "payroll" && <StorePayroll storeId={store.id} holidayDow={store.weeklyHolidayDow ?? 0} />}
+      {tab === "contracts" && <StoreContracts storeId={store.id} storeName={store.name} storeAddress={store.address} initialSealImage={store.sealImage} />}
+      {tab === "payroll" && <StorePayroll storeId={store.id} storeName={store.name} holidayDow={store.weeklyHolidayDow ?? 0} />}
       {tab === "qr" && <StoreQr storeName={store.name} address={store.address} qrToken={store.qrToken} />}
     </div>
   );

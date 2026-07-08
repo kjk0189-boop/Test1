@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { computeMonthlyPayroll, durationLabel } from "@/lib/payroll";
+import PayslipView from "@/components/PayslipView";
 
 type UserRow = { id: string; name: string; role: string; storeId: string | null; hourlyWage: number | null };
 type AttendanceRecord = { id: string; userId: string; date: string; checkIn: string | null; checkOut: string | null };
@@ -11,10 +12,12 @@ function todayMonth() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
-export default function StorePayroll({ storeId, holidayDow }: { storeId: string; holidayDow: number }) {
+export default function StorePayroll({ storeId, storeName, holidayDow }: { storeId: string; storeName?: string; holidayDow: number }) {
   const [month, setMonth] = useState(todayMonth());
   const [crewList, setCrewList] = useState<UserRow[]>([]);
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
+  const [issuing, setIssuing] = useState<string | null>(null);
+  const [viewing, setViewing] = useState<{ crew: UserRow; items: { label: string; value: number }[]; grandTotal: number } | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -34,6 +37,30 @@ export default function StorePayroll({ storeId, holidayDow }: { storeId: string;
     return { crew, payroll };
   });
 
+  async function handleIssue(crew: UserRow, payroll: ReturnType<typeof computeMonthlyPayroll>) {
+    setIssuing(crew.id);
+    const items = [
+      { label: "기본급 (연장 포함)", value: payroll.totals.basePay },
+      { label: "야간근로수당 (+50%)", value: payroll.totals.nightPay },
+      { label: "주휴수당", value: payroll.weeklyAllowanceTotal },
+    ];
+    try {
+      await fetch("/api/payslips", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          employeeId: crew.id,
+          month,
+          breakdown: items,
+          grandTotal: payroll.grandTotal,
+        }),
+      });
+      setViewing({ crew, items, grandTotal: payroll.grandTotal });
+    } finally {
+      setIssuing(null);
+    }
+  }
+
   return (
     <div className="max-w-4xl">
       <div className="flex items-center justify-between mb-1 flex-wrap gap-2">
@@ -44,7 +71,7 @@ export default function StorePayroll({ storeId, holidayDow }: { storeId: string;
 
       <div className="rounded-xl border bg-white overflow-hidden" style={{ borderColor: "#DDE1D8" }}>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm" style={{ minWidth: "640px" }}>
+          <table className="w-full text-sm" style={{ minWidth: "720px" }}>
             <thead>
               <tr style={{ background: "#F7F8F5" }}>
                 <th className="text-left px-4 py-3 font-semibold" style={{ color: "#5B6660" }}>크루원</th>
@@ -53,6 +80,7 @@ export default function StorePayroll({ storeId, holidayDow }: { storeId: string;
                 <th className="text-right px-4 py-3 font-semibold" style={{ color: "#5B6660" }}>야간</th>
                 <th className="text-right px-4 py-3 font-semibold" style={{ color: "#5B6660" }}>주휴</th>
                 <th className="text-right px-4 py-3 font-semibold" style={{ color: "#5B6660" }}>실지급액</th>
+                <th className="text-right px-4 py-3 font-semibold" style={{ color: "#5B6660" }}>명세서</th>
               </tr>
             </thead>
             <tbody>
@@ -64,18 +92,39 @@ export default function StorePayroll({ storeId, holidayDow }: { storeId: string;
                   <td className="px-4 py-3 text-right" style={{ fontFamily: "var(--font-mono)" }}>{Math.round(payroll.totals.nightPay).toLocaleString()}원</td>
                   <td className="px-4 py-3 text-right" style={{ fontFamily: "var(--font-mono)" }}>{Math.round(payroll.weeklyAllowanceTotal).toLocaleString()}원</td>
                   <td className="px-4 py-3 text-right font-bold" style={{ fontFamily: "var(--font-mono)", color: "#1B2420" }}>{payroll.grandTotal.toLocaleString()}원</td>
+                  <td className="px-4 py-3 text-right">
+                    <button
+                      onClick={() => handleIssue(crew, payroll)}
+                      disabled={issuing === crew.id}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50"
+                      style={{ background: "#1B2420", color: "#F7F8F5" }}
+                    >
+                      {issuing === crew.id ? "발급 중..." : "발급"}
+                    </button>
+                  </td>
                 </tr>
               ))}
               {rows.length === 0 && (
-                <tr><td colSpan={6} className="px-4 py-8 text-center text-sm" style={{ color: "#8A9088" }}>등록된 크루원이 없어요.</td></tr>
+                <tr><td colSpan={7} className="px-4 py-8 text-center text-sm" style={{ color: "#8A9088" }}>등록된 크루원이 없어요.</td></tr>
               )}
             </tbody>
           </table>
         </div>
       </div>
       <p className="text-xs mt-4" style={{ color: "#8A9088" }}>
-        연장(1일 8시간 초과 ×1.5) · 야간(22:00~06:00 ×0.5 가산) · 휴일근로(주휴일 근무 ×1.5, 8시간 초과 ×2.0) · 주휴수당(주 15시간↑ 근무 시)을 자동 반영한 추정치예요. 4대보험 공제는 포함되지 않았고, 명세서 발급/저장 기능은 아직 없어요.
+        연장(1일 8시간 초과 ×1.5) · 야간(22:00~06:00 ×0.5 가산) · 휴일근로(주휴일 근무 ×1.5, 8시간 초과 ×2.0) · 주휴수당(주 15시간↑ 근무 시)을 자동 반영한 추정치예요. 4대보험 공제는 포함되지 않았어요.
       </p>
+
+      {viewing && (
+        <PayslipView
+          employeeName={viewing.crew.name}
+          storeName={storeName}
+          month={month}
+          items={viewing.items}
+          grandTotal={viewing.grandTotal}
+          onClose={() => setViewing(null)}
+        />
+      )}
     </div>
   );
 }

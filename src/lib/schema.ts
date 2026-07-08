@@ -5,6 +5,7 @@ import {
   boolean,
   timestamp,
   jsonb,
+  doublePrecision,
 } from "drizzle-orm/pg-core";
 
 export const stores = pgTable("stores", {
@@ -14,6 +15,9 @@ export const stores = pgTable("stores", {
   qrToken: text("qr_token").notNull(),
   weeklyHolidayDow: integer("weekly_holiday_dow").notNull().default(0),
   sealImage: text("seal_image"),
+  latitude: doublePrecision("latitude"),
+  longitude: doublePrecision("longitude"),
+  radiusMeters: integer("radius_meters").notNull().default(100),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -41,6 +45,9 @@ export const attendanceRecords = pgTable("attendance_records", {
   checkIn: timestamp("check_in", { withTimezone: true }),
   checkOut: timestamp("check_out", { withTimezone: true }),
   method: text("method").default("QR"),
+  // 매장 좌표가 등록된 경우, 스캔 시점 위치와 매장 사이 거리(미터)를 기록 (부정 출퇴근 확인용)
+  checkInDistance: integer("check_in_distance"),
+  checkOutDistance: integer("check_out_distance"),
   // [{ editedBy, editedAt, oldCheckIn, newCheckIn, oldCheckOut, newCheckOut, reason }]
   editLog: jsonb("edit_log").notNull().default([]),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

@@ -18,8 +18,11 @@ type AttendanceRecord = {
   date: string;
   checkIn: string | null;
   checkOut: string | null;
+  checkInDistance: number | null;
+  checkOutDistance: number | null;
   editLog: EditLogEntry[];
 };
+type StoreInfo = { id: string; radiusMeters: number };
 
 function todayStr() {
   const d = new Date();
@@ -52,19 +55,36 @@ export default function StoreAttendance({ storeId }: { storeId: string }) {
   const [date, setDate] = useState(todayStr());
   const [crewList, setCrewList] = useState<UserRow[]>([]);
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
+  const [radius, setRadius] = useState(100);
   const [editing, setEditing] = useState<{ user: UserRow; rec: AttendanceRecord | null } | null>(null);
   const [viewingLog, setViewingLog] = useState<{ user: UserRow; rec: AttendanceRecord } | null>(null);
 
   const load = useCallback(async () => {
-    const [usersRes, attRes] = await Promise.all([
+    const [usersRes, attRes, storesRes] = await Promise.all([
       fetch("/api/users").then((r) => r.json()),
       fetch(`/api/attendance?storeId=${storeId}&date=${date}`).then((r) => r.json()),
+      fetch("/api/stores").then((r) => r.json()),
     ]);
     setCrewList((usersRes.users ?? []).filter((u: UserRow) => u.role === "crew" && u.storeId === storeId));
     setRecords(attRes.attendance ?? []);
+    const storeInfo = (storesRes.stores ?? []).find((s: StoreInfo) => s.id === storeId);
+    if (storeInfo) setRadius(storeInfo.radiusMeters);
   }, [storeId, date]);
 
   useEffect(() => { load(); }, [load]);
+
+  function locationBadge(rec: AttendanceRecord | null) {
+    if (!rec) return null;
+    const flaggedIn = rec.checkInDistance != null && rec.checkInDistance > radius;
+    const flaggedOut = rec.checkOutDistance != null && rec.checkOutDistance > radius;
+    if (!flaggedIn && !flaggedOut) return null;
+    const dist = flaggedOut ? rec.checkOutDistance : rec.checkInDistance;
+    return (
+      <span className="ml-1.5 text-xs font-semibold px-1.5 py-0.5 rounded-full" style={{ background: "#F5E7E3", color: "#A64B3A" }}>
+        ⚠️ {dist}m
+      </span>
+    );
+  }
 
   async function handleSaveEdit(checkIn: string | null, checkOut: string | null, reason: string) {
     if (!editing) return;
@@ -111,7 +131,10 @@ export default function StoreAttendance({ storeId }: { storeId: string }) {
                 return (
                   <tr key={u.id} className="border-t" style={{ borderColor: "#EEF0EA" }}>
                     <td className="px-4 py-3 font-medium" style={{ color: "#1B2420" }}>{u.name}</td>
-                    <td className="px-4 py-3" style={{ fontFamily: "var(--font-mono)" }}>{fmtTime(rec?.checkIn ?? null)}</td>
+                    <td className="px-4 py-3" style={{ fontFamily: "var(--font-mono)" }}>
+                      {fmtTime(rec?.checkIn ?? null)}
+                      {locationBadge(rec)}
+                    </td>
                     <td className="px-4 py-3" style={{ fontFamily: "var(--font-mono)" }}>{fmtTime(rec?.checkOut ?? null)}</td>
                     <td className="px-4 py-3" style={{ fontFamily: "var(--font-mono)" }}>
                       {rec?.checkIn && rec?.checkOut ? durationLabel(new Date(rec.checkOut).getTime() - new Date(rec.checkIn).getTime()) : "-"}

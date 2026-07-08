@@ -56,24 +56,40 @@ export default function CrewPunchPage() {
   const status = !record ? "before" : !record.checkOut ? "working" : "done";
   const statusLabel = status === "before" ? "출근 전" : status === "working" ? "근무 중" : "퇴근 완료";
 
+  function getLocation(): Promise<{ latitude: number; longitude: number } | null> {
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) {
+        resolve(null);
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+        () => resolve(null),
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    });
+  }
+
   async function submitPunch(qrToken: string) {
     setScannerOpen(false);
     setLoading(true);
     setFlash(null);
     try {
+      const location = await getLocation();
       const res = await fetch("/api/attendance/punch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ qrToken }),
+        body: JSON.stringify({ qrToken, latitude: location?.latitude ?? null, longitude: location?.longitude ?? null }),
       });
       const data = await res.json();
       if (!res.ok) {
         setFlash({ type: "error", text: data.error || "오류가 발생했어요." });
         return;
       }
+      const label = data.status === "checked-in" ? `출근 완료 · ${fmtTime(data.record.checkIn)}` : `퇴근 완료 · ${fmtTime(data.record.checkOut)}`;
       setFlash({
         type: data.status === "checked-in" ? "in" : "out",
-        text: data.status === "checked-in" ? `출근 완료 · ${fmtTime(data.record.checkIn)}` : `퇴근 완료 · ${fmtTime(data.record.checkOut)}`,
+        text: data.flagged ? `${label} (매장에서 다소 떨어진 위치로 기록됐어요)` : label,
       });
       await load();
     } finally {

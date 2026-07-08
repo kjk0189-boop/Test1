@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 
 type UserRow = { id: string; name: string; role: string; storeId: string | null };
-type AttendanceRecord = { id: string; userId: string; date: string; checkIn: string | null; checkOut: string | null };
+type AttendanceRecord = { id: string; userId: string; date: string; checkIn: string | null; checkOut: string | null; checkInDistance: number | null; checkOutDistance: number | null };
+type StoreInfo = { id: string; radiusMeters: number };
 
 function todayStr() {
   const d = new Date();
@@ -23,18 +24,35 @@ function durationLabel(ms: number) {
 export default function StoreDashboard({ storeId, storeName }: { storeId: string; storeName: string }) {
   const [crewList, setCrewList] = useState<UserRow[]>([]);
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
+  const [radius, setRadius] = useState(100);
 
   useEffect(() => {
     async function load() {
-      const [usersRes, attRes] = await Promise.all([
+      const [usersRes, attRes, storesRes] = await Promise.all([
         fetch("/api/users").then((r) => r.json()),
         fetch(`/api/attendance?storeId=${storeId}&date=${todayStr()}`).then((r) => r.json()),
+        fetch("/api/stores").then((r) => r.json()),
       ]);
       setCrewList((usersRes.users ?? []).filter((u: UserRow) => u.role === "crew" && u.storeId === storeId));
       setRecords(attRes.attendance ?? []);
+      const storeInfo = (storesRes.stores ?? []).find((s: StoreInfo) => s.id === storeId);
+      if (storeInfo) setRadius(storeInfo.radiusMeters);
     }
     load();
   }, [storeId]);
+
+  function locationBadge(rec: AttendanceRecord | undefined) {
+    if (!rec) return null;
+    const flaggedIn = rec.checkInDistance != null && rec.checkInDistance > radius;
+    const flaggedOut = rec.checkOutDistance != null && rec.checkOutDistance > radius;
+    if (!flaggedIn && !flaggedOut) return null;
+    const dist = flaggedOut ? rec.checkOutDistance : rec.checkInDistance;
+    return (
+      <span className="ml-1.5 text-xs font-semibold px-1.5 py-0.5 rounded-full" style={{ background: "#F5E7E3", color: "#A64B3A" }}>
+        ⚠️ 매장에서 {dist}m
+      </span>
+    );
+  }
 
   const rows = crewList.map((u) => {
     const rec = records.find((r) => r.userId === u.id);
@@ -65,7 +83,10 @@ export default function StoreDashboard({ storeId, storeName }: { storeId: string
               {rows.map(({ user, rec, status, color, workedMs }) => (
                 <tr key={user.id} className="border-t" style={{ borderColor: "#EEF0EA" }}>
                   <td className="px-4 py-3 font-medium" style={{ color: "#1B2420" }}>{user.name}</td>
-                  <td className="px-4 py-3"><span className="text-xs font-semibold px-2 py-1 rounded-full" style={{ background: "#EEF0EA", color }}>{status}</span></td>
+                  <td className="px-4 py-3">
+                    <span className="text-xs font-semibold px-2 py-1 rounded-full" style={{ background: "#EEF0EA", color }}>{status}</span>
+                    {locationBadge(rec)}
+                  </td>
                   <td className="px-4 py-3" style={{ fontFamily: "var(--font-mono)" }}>{fmtTime(rec?.checkIn ?? null)}</td>
                   <td className="px-4 py-3" style={{ fontFamily: "var(--font-mono)" }}>{fmtTime(rec?.checkOut ?? null)}</td>
                   <td className="px-4 py-3 text-right font-semibold" style={{ fontFamily: "var(--font-mono)" }}>{workedMs != null ? durationLabel(workedMs) : "-"}</td>

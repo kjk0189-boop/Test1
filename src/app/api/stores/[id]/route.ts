@@ -16,6 +16,9 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   const body = await req.json().catch(() => null);
   const patch: Partial<typeof stores.$inferInsert> = {};
   if (typeof body?.weeklyHolidayDow === "number") patch.weeklyHolidayDow = body.weeklyHolidayDow;
+  if (typeof body?.latitude === "number" || body?.latitude === null) patch.latitude = body.latitude;
+  if (typeof body?.longitude === "number" || body?.longitude === null) patch.longitude = body.longitude;
+  if (typeof body?.radiusMeters === "number") patch.radiusMeters = body.radiusMeters;
   if (session.role === "admin") {
     if (typeof body?.name === "string") patch.name = body.name;
     if (typeof body?.address === "string") patch.address = body.address;

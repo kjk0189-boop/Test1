@@ -6,9 +6,10 @@ import StoreAttendance from "@/components/store-views/StoreAttendance";
 import StoreCrew from "@/components/store-views/StoreCrew";
 import StorePayroll from "@/components/store-views/StorePayroll";
 import StoreQr from "@/components/store-views/StoreQr";
+import StoreLocationSettings from "@/components/store-views/StoreLocationSettings";
 import StoreContracts from "@/components/contracts/StoreContracts";
 
-type Store = { id: string; name: string; address: string | null; qrToken: string; weeklyHolidayDow: number; sealImage: string | null };
+type Store = { id: string; name: string; address: string | null; qrToken: string; weeklyHolidayDow: number; sealImage: string | null; latitude: number | null; longitude: number | null; radiusMeters: number };
 
 const TABS = [
   { key: "dashboard", label: "출근 현황" },
@@ -70,7 +71,12 @@ export default function AdminOperatePage() {
       {tab === "crew" && <StoreCrew storeId={store.id} />}
       {tab === "contracts" && <StoreContracts storeId={store.id} storeName={store.name} storeAddress={store.address} />}
       {tab === "payroll" && <StorePayroll storeId={store.id} storeName={store.name} holidayDow={store.weeklyHolidayDow ?? 0} />}
-      {tab === "qr" && <StoreQr storeName={store.name} address={store.address} qrToken={store.qrToken} />}
+      {tab === "qr" && (
+        <div className="max-w-xl space-y-6">
+          <StoreQr storeName={store.name} address={store.address} qrToken={store.qrToken} />
+          <StoreLocationSettings storeId={store.id} initialLatitude={store.latitude} initialLongitude={store.longitude} initialRadius={store.radiusMeters} />
+        </div>
+      )}
     </div>
   );
 }

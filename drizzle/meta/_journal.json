@@ -15,6 +15,13 @@
       "when": 1783468082916,
       "tag": "0001_past_brood",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783470272650,
+      "tag": "0002_reflective_black_queen",
+      "breakpoints": true
     }
   ]
 }

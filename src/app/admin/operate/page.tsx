@@ -68,7 +68,7 @@ export default function AdminOperatePage() {
       {tab === "dashboard" && <StoreDashboard storeId={store.id} storeName={store.name} />}
       {tab === "attendance" && <StoreAttendance storeId={store.id} />}
       {tab === "crew" && <StoreCrew storeId={store.id} />}
-      {tab === "contracts" && <StoreContracts storeId={store.id} storeName={store.name} storeAddress={store.address} initialSealImage={store.sealImage} />}
+      {tab === "contracts" && <StoreContracts storeId={store.id} storeName={store.name} storeAddress={store.address} />}
       {tab === "payroll" && <StorePayroll storeId={store.id} storeName={store.name} holidayDow={store.weeklyHolidayDow ?? 0} />}
       {tab === "qr" && <StoreQr storeName={store.name} address={store.address} qrToken={store.qrToken} />}
     </div>

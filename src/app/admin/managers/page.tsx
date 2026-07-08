@@ -1,34 +1,90 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import ContractListPanel from "@/components/contracts/ContractListPanel";
+import UserSealManager from "@/components/contracts/UserSealManager";
+import AdminManagerPayslipsClient from "@/components/AdminManagerPayslipsClient";
 
 type Store = { id: string; name: string };
 type UserRow = { id: string; name: string; role: string; storeId: string | null; phone: string };
 
+const TABS = [
+  { key: "register", label: "매니저 등록" },
+  { key: "contracts", label: "근로계약서" },
+  { key: "payslips", label: "급여명세서" },
+] as const;
+
 export default function AdminManagersPage() {
+  const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("register");
   const [stores, setStores] = useState<Store[]>([]);
   const [managers, setManagers] = useState<UserRow[]>([]);
+  const [mySealImage, setMySealImage] = useState<string | null>(null);
+  const [myId, setMyId] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    const [storesRes, usersRes, meRes] = await Promise.all([
+      fetch("/api/stores").then((r) => r.json()),
+      fetch("/api/users").then((r) => r.json()),
+      fetch("/api/me").then((r) => r.json()),
+    ]);
+    setStores(storesRes.stores ?? []);
+    setManagers((usersRes.users ?? []).filter((u: UserRow) => u.role === "manager"));
+    setMyId(meRes.user?.id ?? null);
+    setMySealImage(meRes.user?.sealImage ?? null);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const contractEmployees = managers.map((m) => ({ id: m.id, name: m.name }));
+  const payslipManagers = managers.map((m) => ({
+    id: m.id,
+    name: m.name,
+    storeName: stores.find((s) => s.id === m.storeId)?.name ?? null,
+  }));
+
+  return (
+    <div className="max-w-3xl">
+      <h2 className="text-2xl font-bold mb-1" style={{ color: "#1B2420", fontFamily: "var(--font-display)" }}>매니저 관리</h2>
+      <p className="text-sm mb-6" style={{ color: "#5B6660" }}>매니저 등록, 근로계약서, 급여명세서를 한 곳에서 관리해요.</p>
+
+      <div className="flex gap-1.5 mb-6 overflow-x-auto pb-1">
+        {TABS.map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className="px-3.5 py-2 rounded-lg text-sm font-semibold whitespace-nowrap"
+            style={{ background: tab === t.key ? "#1B2420" : "#EEF0EA", color: tab === t.key ? "#F7F8F5" : "#5B6660" }}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "register" && <ManagerRegistry stores={stores} managers={managers} onChanged={load} />}
+      {tab === "contracts" && myId && (
+        <>
+          <UserSealManager userId={myId} sealImage={mySealImage} onUpdated={setMySealImage} />
+          <ContractListPanel employees={contractEmployees} payMode="salary" sealImage={mySealImage} storeName="회사" />
+        </>
+      )}
+      {tab === "payslips" && <AdminManagerPayslipsClient managers={payslipManagers} />}
+    </div>
+  );
+}
+
+function ManagerRegistry({
+  stores, managers, onChanged,
+}: { stores: Store[]; managers: UserRow[]; onChanged: () => Promise<void> }) {
   const [formTarget, setFormTarget] = useState<UserRow | {} | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<UserRow | null>(null);
   const [resetTarget, setResetTarget] = useState<UserRow | null>(null);
   const [resetDone, setResetDone] = useState(false);
 
-  const load = useCallback(async () => {
-    const [storesRes, usersRes] = await Promise.all([
-      fetch("/api/stores").then((r) => r.json()),
-      fetch("/api/users").then((r) => r.json()),
-    ]);
-    setStores(storesRes.stores ?? []);
-    setManagers((usersRes.users ?? []).filter((u: UserRow) => u.role === "manager"));
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
-
   async function handleDelete() {
     if (!deleteTarget) return;
     await fetch(`/api/users/${deleteTarget.id}`, { method: "DELETE" });
     setDeleteTarget(null);
-    await load();
+    await onChanged();
   }
 
   async function handleResetPassword() {
@@ -41,12 +97,10 @@ export default function AdminManagersPage() {
   const isEdit = formTarget && "id" in formTarget;
 
   return (
-    <div className="max-w-3xl">
-      <div className="flex items-center justify-between mb-1 flex-wrap gap-2">
-        <h2 className="text-2xl font-bold" style={{ color: "#1B2420", fontFamily: "var(--font-display)" }}>매니저 관리</h2>
+    <div>
+      <div className="flex justify-end mb-3">
         <button onClick={() => setFormTarget({})} disabled={stores.length === 0} className="px-3.5 py-2 rounded-lg text-sm font-semibold disabled:opacity-40" style={{ background: "#B8863B", color: "#1B2420" }}>신규 등록</button>
       </div>
-      <p className="text-sm mb-6" style={{ color: "#5B6660" }}>전 지점 매니저를 한 곳에서 등록하고 관리해요.</p>
 
       <div className="space-y-2">
         {managers.map((m) => {
@@ -73,7 +127,7 @@ export default function AdminManagersPage() {
           initial={isEdit ? (formTarget as UserRow) : null}
           stores={stores}
           onClose={() => setFormTarget(null)}
-          onSaved={async () => { setFormTarget(null); await load(); }}
+          onSaved={async () => { setFormTarget(null); await onChanged(); }}
         />
       )}
       {deleteTarget && (

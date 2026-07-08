@@ -28,6 +28,7 @@ export const users = pgTable("users", {
   hourlyWage: integer("hourly_wage"),
   hireDate: text("hire_date"), // YYYY-MM-DD
   position: text("position").default("신입"), // 크루 직책: 신입 | 일반 | 선임
+  sealImage: text("seal_image"), // 관리자 개인/회사 인감 (매니저 계약서 서명용)
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });

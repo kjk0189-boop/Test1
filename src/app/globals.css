@@ -9,3 +9,20 @@ body {
   background: var(--background);
   color: var(--foreground);
 }
+
+/* 인쇄/PDF 저장 시 .print-area 안의 내용만 보이게 함 */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+  .print-area {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+  }
+}

@@ -23,6 +23,7 @@ export async function GET() {
       storeId: user.storeId,
       phone: user.phone,
       mustChangePassword: user.mustChangePassword,
+      sealImage: user.sealImage,
     },
   });
 }

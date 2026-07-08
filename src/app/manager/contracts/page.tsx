@@ -17,10 +17,8 @@ export default async function ManagerContractsPage() {
 
   return (
     <ManagerContractsClient
-      storeId={store.id}
       storeName={store.name}
       storeAddress={store.address}
-      initialSealImage={store.sealImage}
       crewList={crewList}
     />
   );

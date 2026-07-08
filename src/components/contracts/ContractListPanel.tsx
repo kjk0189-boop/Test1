@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import ContractEditorModal, { ContractFormValues } from "./ContractEditorModal";
 import EmployerSignStep from "./EmployerSignStep";
 import ContractPreview from "./ContractPreview";
@@ -13,6 +13,31 @@ type Contract = {
   signToken: string | null;
   [key: string]: unknown;
 };
+
+async function copyText(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // 아래 fallback으로 진행
+  }
+  try {
+    const el = document.createElement("textarea");
+    el.value = text;
+    el.style.position = "fixed";
+    el.style.opacity = "0";
+    document.body.appendChild(el);
+    el.focus();
+    el.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(el);
+    return ok;
+  } catch {
+    return false;
+  }
+}
 
 export default function ContractListPanel({
   employees,
@@ -32,7 +57,9 @@ export default function ContractListPanel({
   const [pendingForm, setPendingForm] = useState<ContractFormValues | null>(null);
   const [signingEmployee, setSigningEmployee] = useState<Employee | null>(null);
   const [linkResult, setLinkResult] = useState<{ employee: Employee; link: string } | null>(null);
+  const [copyStatus, setCopyStatus] = useState<"idle" | "ok" | "fail">("idle");
   const [previewing, setPreviewing] = useState<{ employee: Employee; contract: Contract } | null>(null);
+  const linkInputRef = useRef<HTMLInputElement>(null);
 
   async function loadAll() {
     const entries = await Promise.all(
@@ -71,9 +98,20 @@ export default function ContractListPanel({
     setPendingForm(null);
     if (res.ok && data.contract?.signToken) {
       const link = `${window.location.origin}/contract-sign/${data.contract.signToken}`;
+      setCopyStatus("idle");
       setLinkResult({ employee: signingEmployee, link });
     }
     await loadAll();
+  }
+
+  async function handleCopy(link: string) {
+    const ok = await copyText(link);
+    setCopyStatus(ok ? "ok" : "fail");
+    if (!ok) {
+      // 복사가 안 되면 입력창을 선택된 상태로 보여줘서 수동 복사(Ctrl/⌘+C)라도 가능하게 함
+      linkInputRef.current?.focus();
+      linkInputRef.current?.select();
+    }
   }
 
   function statusLabel(contract: Contract | null) {
@@ -108,13 +146,13 @@ export default function ContractListPanel({
                   <button
                     onClick={() => {
                       const link = `${window.location.origin}/contract-sign/${contract.signToken}`;
-                      navigator.clipboard?.writeText(link);
+                      setCopyStatus("idle");
                       setLinkResult({ employee: emp, link });
                     }}
                     className="px-3 py-1.5 rounded-lg text-xs font-semibold"
                     style={{ background: "#EEF0EA", color: "#1B2420" }}
                   >
-                    링크 복사
+                    서명 링크
                   </button>
                 )}
                 <button onClick={() => setEditingEmployee(emp)} className="px-3 py-1.5 rounded-lg text-xs font-semibold" style={{ background: "#1B2420", color: "#F7F8F5" }}>
@@ -154,16 +192,23 @@ export default function ContractListPanel({
       {linkResult && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: "rgba(27,36,32,0.45)" }}>
           <div className="w-full max-w-md rounded-2xl bg-white p-6" style={{ border: "1px solid #DDE1D8" }}>
-            <h3 className="text-lg font-bold mb-2" style={{ color: "#1B2420" }}>서명 링크가 생성됐어요</h3>
+            <h3 className="text-lg font-bold mb-2" style={{ color: "#1B2420" }}>서명 링크</h3>
             <p className="text-sm mb-4" style={{ color: "#5B6660" }}>
-              {linkResult.employee.name}님에게 이 링크를 카카오톡/문자로 보내주세요. 링크를 열면 계약 내용을 먼저 확인하고 서명할 수 있어요.
+              {linkResult.employee.name}님에게 이 링크를 카카오톡/문자로 보내주세요. 링크를 열면 로그인 없이 계약 내용을 먼저 확인하고 서명할 수 있어요.
             </p>
-            <div className="rounded-lg border px-3 py-2.5 text-xs break-all mb-4" style={{ borderColor: "#DDE1D8", background: "#F7F8F5", fontFamily: "var(--font-mono)" }}>
-              {linkResult.link}
-            </div>
-            <div className="flex gap-2">
+            <input
+              ref={linkInputRef}
+              readOnly
+              value={linkResult.link}
+              onFocus={(e) => e.currentTarget.select()}
+              className="w-full rounded-lg border px-3 py-2.5 text-xs mb-2"
+              style={{ borderColor: "#DDE1D8", background: "#F7F8F5", fontFamily: "var(--font-mono)" }}
+            />
+            {copyStatus === "ok" && <p className="text-xs mb-3" style={{ color: "#3F6B4F" }}>복사됐어요.</p>}
+            {copyStatus === "fail" && <p className="text-xs mb-3" style={{ color: "#A64B3A" }}>자동 복사가 안 됐어요. 위 링크를 길게 눌러(또는 클릭 후 Ctrl/⌘+C) 직접 복사해주세요.</p>}
+            <div className="flex gap-2 mt-2">
               <button
-                onClick={() => navigator.clipboard?.writeText(linkResult.link)}
+                onClick={() => handleCopy(linkResult.link)}
                 className="flex-1 py-2.5 rounded-lg text-sm font-semibold"
                 style={{ background: "#EEF0EA", color: "#5B6660" }}
               >

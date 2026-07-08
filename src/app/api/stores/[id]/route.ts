@@ -15,7 +15,6 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
 
   const body = await req.json().catch(() => null);
   const patch: Partial<typeof stores.$inferInsert> = {};
-  if (typeof body?.sealImage === "string" || body?.sealImage === null) patch.sealImage = body.sealImage;
   if (typeof body?.weeklyHolidayDow === "number") patch.weeklyHolidayDow = body.weeklyHolidayDow;
   if (session.role === "admin") {
     if (typeof body?.name === "string") patch.name = body.name;

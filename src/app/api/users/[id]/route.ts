@@ -35,6 +35,12 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   if (typeof body?.hireDate === "string") patch.hireDate = body.hireDate;
   if (typeof body?.position === "string") patch.position = body.position;
   if (typeof body?.active === "boolean") patch.active = body.active;
+  if (typeof body?.sealImage === "string" || body?.sealImage === null) {
+    if (session.userId !== id) {
+      return NextResponse.json({ error: "본인 인감만 수정할 수 있어요." }, { status: 403 });
+    }
+    patch.sealImage = body.sealImage;
+  }
   if (typeof body?.storeId === "string" && session.role === "admin") patch.storeId = body.storeId;
 
   if (Object.keys(patch).length === 0) {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { and, eq, like } from "drizzle-orm";
+import { and, eq, gte, lte, like } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { attendanceRecords, users } from "@/lib/schema";
 import { getSessionFromCookies } from "@/lib/auth";
@@ -14,6 +14,8 @@ export async function GET(req: NextRequest) {
   const userId = searchParams.get("userId");
   const month = searchParams.get("month"); // YYYY-MM
   const date = searchParams.get("date"); // YYYY-MM-DD
+  const from = searchParams.get("from"); // YYYY-MM-DD (포함)
+  const to = searchParams.get("to"); // YYYY-MM-DD (포함)
 
   const conditions = [];
   if (session.role === "crew") {
@@ -24,6 +26,8 @@ export async function GET(req: NextRequest) {
   if (storeId) conditions.push(eq(attendanceRecords.storeId, storeId));
   if (date) conditions.push(eq(attendanceRecords.date, date));
   if (month) conditions.push(like(attendanceRecords.date, `${month}%`));
+  if (from) conditions.push(gte(attendanceRecords.date, from));
+  if (to) conditions.push(lte(attendanceRecords.date, to));
 
   const rows = await db
     .select()

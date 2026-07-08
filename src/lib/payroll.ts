@@ -87,6 +87,7 @@ export type MonthlyPayroll = {
   weeklyAllowanceTotal: number;
   totals: { netMin: number; otMin: number; nightMin: number; holMin: number; basePay: number; nightPay: number };
   grandTotal: number;
+  byMonth: Record<string, { basePay: number; nightPay: number; weeklyAllowance: number; grandTotal: number; netMin: number }>;
 };
 
 export function computeMonthlyPayroll(
@@ -106,9 +107,12 @@ export function computeMonthlyPayroll(
     byWeek[wk] = (byWeek[wk] || 0) + s.netMin;
   });
   let weeklyAllowanceTotal = 0;
-  Object.values(byWeek).forEach((netMin) => {
+  const weeklyAllowanceByWeek: Record<string, number> = {};
+  Object.entries(byWeek).forEach(([wk, netMin]) => {
     const hours = netMin / 60;
-    if (hours >= 15) weeklyAllowanceTotal += (Math.min(hours, 40) / 40) * 8 * wage;
+    const allowance = hours >= 15 ? (Math.min(hours, 40) / 40) * 8 * wage : 0;
+    weeklyAllowanceByWeek[wk] = allowance;
+    weeklyAllowanceTotal += allowance;
   });
 
   const totals = daily.reduce(
@@ -124,9 +128,28 @@ export function computeMonthlyPayroll(
     { netMin: 0, otMin: 0, nightMin: 0, holMin: 0, basePay: 0, nightPay: 0 }
   );
 
+  // 월별 세부 내역: 근무일별 급여는 해당 날짜의 달에, 주휴수당은 해당 주 월요일이 속한 달에 귀속
+  const byMonth: MonthlyPayroll["byMonth"] = {};
+  function addToMonth(month: string, patch: Partial<{ basePay: number; nightPay: number; weeklyAllowance: number; netMin: number }>) {
+    if (!byMonth[month]) byMonth[month] = { basePay: 0, nightPay: 0, weeklyAllowance: 0, grandTotal: 0, netMin: 0 };
+    byMonth[month].basePay += patch.basePay ?? 0;
+    byMonth[month].nightPay += patch.nightPay ?? 0;
+    byMonth[month].weeklyAllowance += patch.weeklyAllowance ?? 0;
+    byMonth[month].netMin += patch.netMin ?? 0;
+  }
+  daily.forEach((d) => {
+    addToMonth(d.dateStr.slice(0, 7), { basePay: d.basePay, nightPay: d.nightPay, netMin: d.netMin });
+  });
+  Object.entries(weeklyAllowanceByWeek).forEach(([wk, allowance]) => {
+    addToMonth(wk.slice(0, 7), { weeklyAllowance: allowance });
+  });
+  Object.keys(byMonth).forEach((m) => {
+    byMonth[m].grandTotal = Math.round(byMonth[m].basePay + byMonth[m].nightPay + byMonth[m].weeklyAllowance);
+  });
+
   const grandTotal = Math.round(totals.basePay + totals.nightPay + weeklyAllowanceTotal);
 
-  return { daily, weeklyAllowanceTotal: Math.round(weeklyAllowanceTotal), totals, grandTotal };
+  return { daily, weeklyAllowanceTotal: Math.round(weeklyAllowanceTotal), totals, grandTotal, byMonth };
 }
 
 export function durationLabel(ms: number) {

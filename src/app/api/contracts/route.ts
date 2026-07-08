@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, gte, lte } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { contracts, users } from "@/lib/schema";
 import { getSessionFromCookies } from "@/lib/auth";
@@ -11,7 +11,31 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const employeeId = searchParams.get("employeeId");
-  if (!employeeId) return NextResponse.json({ error: "employeeId가 필요해요." }, { status: 400 });
+
+  // employeeId가 없으면 관리자 전용 "전체 계약서" 조회 (지점/직급/기간 필터 지원)
+  if (!employeeId) {
+    if (session.role !== "admin") {
+      return NextResponse.json({ error: "권한이 없어요." }, { status: 403 });
+    }
+    const storeId = searchParams.get("storeId");
+    const employeeRole = searchParams.get("employeeRole"); // 'crew' | 'manager'
+    const from = searchParams.get("from");
+    const to = searchParams.get("to");
+
+    const conditions = [];
+    if (storeId) conditions.push(eq(contracts.storeId, storeId));
+    if (employeeRole) conditions.push(eq(contracts.employeeRole, employeeRole));
+    if (from) conditions.push(gte(contracts.startDate, from));
+    if (to) conditions.push(lte(contracts.startDate, to));
+
+    const rows = await db
+      .select()
+      .from(contracts)
+      .where(conditions.length ? and(...conditions) : undefined)
+      .orderBy(desc(contracts.createdAt));
+
+    return NextResponse.json({ contracts: rows });
+  }
 
   if (session.role !== "admin" && employeeId !== session.userId) {
     if (session.role !== "manager") {

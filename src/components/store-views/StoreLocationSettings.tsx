@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import KakaoMapPicker from "./KakaoMapPicker";
 
 export default function StoreLocationSettings({
   storeId,
@@ -64,6 +65,11 @@ export default function StoreLocationSettings({
     );
   }
 
+  function handleMapPick(newLat: number, newLng: number) {
+    setLat(String(newLat));
+    setLng(String(newLng));
+  }
+
   function handleManualSave() {
     const latNum = parseFloat(lat);
     const lngNum = parseFloat(lng);
@@ -81,6 +87,8 @@ export default function StoreLocationSettings({
   }
 
   const hasLocation = initialLatitude != null && initialLongitude != null;
+  const mapLat = lat ? parseFloat(lat) : null;
+  const mapLng = lng ? parseFloat(lng) : null;
 
   return (
     <div className="rounded-xl border bg-white p-4" style={{ borderColor: "#DDE1D8" }}>
@@ -91,6 +99,10 @@ export default function StoreLocationSettings({
           : "아직 등록 안 됨 · 등록하지 않으면 위치 확인 없이 QR만으로 출퇴근돼요."}
       </p>
 
+      <div className="mb-4">
+        <KakaoMapPicker latitude={mapLat} longitude={mapLng} onChange={handleMapPick} />
+      </div>
+
       <button
         onClick={handleCaptureLocation}
         disabled={capturing || saving}
@@ -99,7 +111,7 @@ export default function StoreLocationSettings({
       >
         {capturing ? "위치 확인 중..." : "지금 여기(매장)를 위치로 저장"}
       </button>
-      <p className="text-xs mb-4" style={{ color: "#8A9088" }}>매장 안에서 이 버튼을 누르면, 지금 서 있는 위치가 매장 기준 좌표로 저장돼요.</p>
+      <p className="text-xs mb-4" style={{ color: "#8A9088" }}>매장 안에서 이 버튼을 누르면, 지금 서 있는 위치가 지도/좌표에 바로 반영돼요. (아직 저장은 안 됐어요 — 아래 "저장" 버튼을 눌러야 반영돼요.)</p>
 
       <div className="grid grid-cols-2 gap-3 mb-3">
         <div>
@@ -121,8 +133,8 @@ export default function StoreLocationSettings({
       )}
 
       <div className="flex gap-2">
-        <button onClick={handleManualSave} disabled={saving} className="flex-1 py-2 rounded-lg text-xs font-semibold disabled:opacity-50" style={{ background: "#EEF0EA", color: "#1B2420" }}>
-          수동 좌표로 저장
+        <button onClick={handleManualSave} disabled={saving} className="flex-1 py-2 rounded-lg text-xs font-semibold disabled:opacity-50" style={{ background: "#1B2420", color: "#F7F8F5" }}>
+          {saving ? "저장 중..." : "이 위치로 저장"}
         </button>
         {hasLocation && (
           <button onClick={handleClear} disabled={saving} className="flex-1 py-2 rounded-lg text-xs font-semibold disabled:opacity-50" style={{ background: "#F5E7E3", color: "#A64B3A" }}>
